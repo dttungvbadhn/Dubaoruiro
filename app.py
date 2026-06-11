@@ -22,7 +22,7 @@ from sklearn.metrics import (
 # ─── Cấu hình trang ───────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Hệ Thống Phát Hiện Giao Dịch Gian Lận",
-    page_icon="🔍",
+    page_icon="",
     layout="wide",
 )
 
