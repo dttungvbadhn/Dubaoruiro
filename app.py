@@ -67,7 +67,7 @@ st.markdown("""
   <!-- Tiêu đề app -->
   <div>
     <div style="font-size:24px;font-weight:900;color:#0D47A1;line-height:1.2;">
-      🔍 Phát hiện Giao dịch Gian lận
+      Hệ Thống Phát Hiện Giao Dịch Gian Lận
     </div>
     <div style="font-size:13px;color:#1565C0;font-weight:700;margin-top:2px;">
       Huấn luyện &amp; so sánh mô hình · Dự báo đơn lẻ · Dự báo hàng loạt
