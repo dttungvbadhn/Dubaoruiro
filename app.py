@@ -26,43 +26,6 @@ st.set_page_config(
     layout="wide",
 )
 
-# ─── Logo Agribank + Tiêu đề ──────────────────────────────────────────────────
-st.markdown("""
-<div style="display:flex;align-items:center;gap:18px;margin-bottom:6px;">
-  <!-- Logo SVG Agribank -->
-  <svg xmlns="http://www.w3.org/2000/svg" width="80" height="95" viewBox="0 0 160 190">
-    <defs>
-      <clipPath id="agri_green">
-        <rect x="20" y="10" width="120" height="120" rx="14"/>
-      </clipPath>
-    </defs>
-    <!-- Nền đỏ -->
-    <rect x="0" y="0" width="160" height="160" rx="16" fill="#C0202A"/>
-    <!-- Hình vuông xanh lá -->
-    <rect x="20" y="10" width="120" height="120" rx="14" fill="#2E6B3E"/>
-    <!-- Dải vàng chéo -->
-    <polygon points="20,78 78,10 120,10 20,110"  fill="#C8972A" clip-path="url(#agri_green)"/>
-    <polygon points="140,72 82,130 40,130 140,98" fill="#C8972A" clip-path="url(#agri_green)"/>
-    <polygon points="20,78 140,10 140,72 20,110"  fill="#C8972A" clip-path="url(#agri_green)"/>
-    <!-- Bông lúa trắng -->
-    <g clip-path="url(#agri_green)" transform="translate(80,70) rotate(-42)">
-      <line x1="0" y1="-42" x2="0" y2="32" stroke="white" stroke-width="3"/>
-      <ellipse cx="-8"  cy="-32" rx="7" ry="4" fill="white" transform="rotate(-30,-8,-32)"/>
-      <ellipse cx="8"   cy="-32" rx="7" ry="4" fill="white" transform="rotate(30,8,-32)"/>
-      <ellipse cx="-9"  cy="-20" rx="7" ry="4" fill="white" transform="rotate(-25,-9,-20)"/>
-      <ellipse cx="9"   cy="-20" rx="7" ry="4" fill="white" transform="rotate(25,9,-20)"/>
-      <ellipse cx="-10" cy="-8"  rx="7" ry="4" fill="white" transform="rotate(-20,-10,-8)"/>
-      <ellipse cx="10"  cy="-8"  rx="7" ry="4" fill="white" transform="rotate(20,10,-8)"/>
-      <ellipse cx="-9"  cy="4"   rx="6" ry="3.5" fill="white" transform="rotate(-14,-9,4)"/>
-      <ellipse cx="9"   cy="4"   rx="6" ry="3.5" fill="white" transform="rotate(14,9,4)"/>
-      <ellipse cx="-7"  cy="16"  rx="5" ry="3"   fill="white" transform="rotate(-8,-7,16)"/>
-      <ellipse cx="7"   cy="16"  rx="5" ry="3"   fill="white" transform="rotate(8,7,16)"/>
-      <ellipse cx="0"   cy="-42" rx="5" ry="3.5" fill="white"/>
-    </g>
-    <!-- Chữ AGRIBANK trắng -->
-    <text x="80" y="182" font-family="Arial Black,Arial,sans-serif"
-          font-size="16" font-weight="900" fill="white"
-          text-anchor="middle" letter-spacing="2">AGRIBANK</text>
   </svg>
   <!-- Tiêu đề app -->
   <div>
