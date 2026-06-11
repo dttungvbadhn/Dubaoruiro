@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import io
-import plotly.graph_objects as go
-import plotly.express as px
 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
@@ -42,21 +40,21 @@ def train_models(file_bytes, test_size, random_state):
     )
     models = {
         "Logistic Regression": LogisticRegression(max_iter=1000),
-        "Decision Tree": DecisionTreeClassifier(random_state=random_state),
-        "Random Forest": RandomForestClassifier(n_estimators=100, random_state=random_state),
+        "Decision Tree":       DecisionTreeClassifier(random_state=random_state),
+        "Random Forest":       RandomForestClassifier(n_estimators=100, random_state=random_state),
     }
     results = {}
     for name, m in models.items():
         m.fit(X_train, y_train)
-        y_pred = m.predict(X_test)
-        y_prob = m.predict_proba(X_test)[:, 1] if hasattr(m, "predict_proba") else None
-        report = classification_report(y_test, y_pred, output_dict=True)
-        cm = confusion_matrix(y_test, y_pred)
-        auc = roc_auc_score(y_test, y_prob) if y_prob is not None else None
+        y_pred  = m.predict(X_test)
+        y_prob  = m.predict_proba(X_test)[:, 1] if hasattr(m, "predict_proba") else None
+        report  = classification_report(y_test, y_pred, output_dict=True)
+        cm      = confusion_matrix(y_test, y_pred)
+        auc     = roc_auc_score(y_test, y_prob) if y_prob is not None else None
         fpr, tpr, _ = roc_curve(y_test, y_prob) if y_prob is not None else (None, None, None)
         results[name] = dict(
             model=m, report=report, cm=cm, auc=auc,
-            fpr=fpr, tpr=tpr, feature_names=list(X.columns)
+            fpr=fpr, tpr=tpr,
         )
     return results, list(X.columns), df
 
@@ -68,10 +66,7 @@ if train_btn and uploaded:
     file_bytes = uploaded.read()
     with st.spinner("Đang huấn luyện..."):
         results, feat_names, df = train_models(file_bytes, test_size, random_state)
-    st.session_state.trained = True
-    st.session_state.results = results
-    st.session_state.feat_names = feat_names
-    st.session_state.df = df
+    st.session_state.update(trained=True, results=results, feat_names=feat_names, df=df)
     st.sidebar.success("✅ Huấn luyện xong!")
 elif train_btn and not uploaded:
     st.sidebar.warning("Vui lòng tải file CSV trước.")
@@ -84,18 +79,116 @@ if not st.session_state.trained:
             "File cần có **14 cột đặc trưng số** (`X_1` … `X_14`) "
             "và **1 cột nhãn** `default` (0 = bình thường, 1 = gian lận)."
         )
-        sample = pd.DataFrame({
-            f"X_{i}": [round(np.random.uniform(0, 1), 3) for _ in range(3)]
-            for i in range(1, 15)
-        })
+        sample = pd.DataFrame(
+            {f"X_{i}": [round(np.random.uniform(0, 1), 3) for _ in range(3)] for i in range(1, 15)}
+        )
         sample["default"] = [0, 1, 0]
         st.dataframe(sample, use_container_width=True)
     st.stop()
 
+# ─── Helpers vẽ bằng HTML/SVG thuần ──────────────────────────────────────────
+def render_confusion_matrix(cm, title=""):
+    tn, fp, fn, tp = cm[0,0], cm[0,1], cm[1,0], cm[1,1]
+    total = cm.sum()
+    def cell(val, bg):
+        return (f'<td style="background:{bg};color:#fff;font-size:22px;font-weight:bold;'
+                f'text-align:center;padding:18px 30px;border-radius:6px;">{val}</td>')
+    html = f"""
+    <p style="font-weight:600;margin-bottom:6px">{title}</p>
+    <table style="border-collapse:separate;border-spacing:6px;">
+      <tr><th></th><th style="padding:6px 30px;color:#555">Dự báo 0</th>
+                   <th style="padding:6px 30px;color:#555">Dự báo 1</th></tr>
+      <tr><th style="color:#555;padding-right:10px">Thực tế 0</th>
+          {cell(tn,'#4e79a7')}{cell(fp,'#e15759')}</tr>
+      <tr><th style="color:#555;padding-right:10px">Thực tế 1</th>
+          {cell(fn,'#e15759')}{cell(tp,'#59a14f')}</tr>
+    </table>
+    <p style="font-size:12px;color:#888;margin-top:6px">
+      TN={tn} &nbsp; FP={fp} &nbsp; FN={fn} &nbsp; TP={tp}
+    </p>"""
+    st.markdown(html, unsafe_allow_html=True)
+
+def render_roc_svg(results_dict):
+    """Vẽ ROC curve bằng SVG thuần, không cần thư viện ngoài."""
+    W, H, PAD = 420, 300, 50
+    inner_w = W - 2*PAD
+    inner_h = H - 2*PAD
+    colors = ["#4e79a7","#e15759","#59a14f"]
+    lines = []
+    legend_items = []
+    for (name, res), color in zip(results_dict.items(), colors):
+        if res["fpr"] is None:
+            continue
+        fpr_arr = np.array(res["fpr"])
+        tpr_arr = np.array(res["tpr"])
+        pts = " ".join(
+            f"{PAD + fpr*inner_w:.1f},{PAD + inner_h - tpr*inner_h:.1f}"
+            for fpr, tpr in zip(fpr_arr, tpr_arr)
+        )
+        lines.append(f'<polyline points="{pts}" fill="none" stroke="{color}" stroke-width="2"/>')
+        legend_items.append((color, f"{name} AUC={res['auc']:.3f}"))
+
+    # diagonal
+    d_pts = f"{PAD},{PAD+inner_h} {PAD+inner_w},{PAD}"
+    lines.append(f'<polyline points="{d_pts}" fill="none" stroke="#aaa" stroke-width="1" stroke-dasharray="5,4"/>')
+
+    # axes
+    axes = (f'<line x1="{PAD}" y1="{PAD}" x2="{PAD}" y2="{PAD+inner_h}" stroke="#555" stroke-width="1.5"/>'
+            f'<line x1="{PAD}" y1="{PAD+inner_h}" x2="{PAD+inner_w}" y2="{PAD+inner_h}" stroke="#555" stroke-width="1.5"/>')
+    axis_labels = (
+        f'<text x="{W//2}" y="{H-6}" text-anchor="middle" font-size="12" fill="#555">FPR</text>'
+        f'<text x="12" y="{H//2}" text-anchor="middle" font-size="12" fill="#555" '
+        f'transform="rotate(-90,12,{H//2})">TPR</text>'
+    )
+    # tick labels
+    ticks = ""
+    for v in [0, 0.25, 0.5, 0.75, 1.0]:
+        x = PAD + v*inner_w
+        y = PAD + inner_h - v*inner_h
+        ticks += (f'<text x="{PAD-4}" y="{y+4}" text-anchor="end" font-size="10" fill="#777">{v:.2f}</text>'
+                  f'<text x="{x}" y="{PAD+inner_h+14}" text-anchor="middle" font-size="10" fill="#777">{v:.2f}</text>')
+
+    # legend
+    leg = ""
+    for i, (color, label) in enumerate(legend_items):
+        ly = PAD + 16 + i*20
+        leg += (f'<rect x="{PAD+inner_w-160}" y="{ly-10}" width="12" height="12" fill="{color}"/>'
+                f'<text x="{PAD+inner_w-144}" y="{ly}" font-size="11" fill="#333">{label}</text>')
+
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}">
+      <rect width="{W}" height="{H}" fill="#fafafa" rx="8"/>
+      <text x="{W//2}" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">Đường cong ROC</text>
+      {axes}{axis_labels}{ticks}
+      {''.join(lines)}
+      {leg}
+    </svg>"""
+    st.markdown(svg, unsafe_allow_html=True)
+
+def render_bar_svg(labels, values, colors_list, title="", width=500, height=260):
+    """Bar chart ngang bằng SVG thuần."""
+    PAD_L, PAD_R, PAD_T, PAD_B = 160, 30, 40, 30
+    inner_w = width - PAD_L - PAD_R
+    bar_h   = max(14, (height - PAD_T - PAD_B) // len(labels) - 6)
+    max_val = max(values) if values else 1
+    svg_bars = ""
+    for i, (label, val, color) in enumerate(zip(labels, values, colors_list)):
+        y = PAD_T + i * (bar_h + 6)
+        bw = int(val / max_val * inner_w)
+        svg_bars += (
+            f'<text x="{PAD_L-6}" y="{y+bar_h//2+4}" text-anchor="end" font-size="11" fill="#333">{label}</text>'
+            f'<rect x="{PAD_L}" y="{y}" width="{bw}" height="{bar_h}" fill="{color}" rx="3"/>'
+            f'<text x="{PAD_L+bw+4}" y="{y+bar_h//2+4}" font-size="11" fill="#555">{val:.4f}</text>'
+        )
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">'
+           f'<rect width="{width}" height="{height}" fill="#fafafa" rx="8"/>'
+           f'<text x="{width//2}" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">{title}</text>'
+           f'{svg_bars}</svg>')
+    st.markdown(svg, unsafe_allow_html=True)
+
 # ─── Lấy state ────────────────────────────────────────────────────────────────
-results   = st.session_state.results
+results    = st.session_state.results
 feat_names = st.session_state.feat_names
-df        = st.session_state.df
+df         = st.session_state.df
 
 tab1, tab2, tab3, tab4 = st.tabs(
     ["📊 So sánh mô hình", "📈 Chi tiết & ROC", "🔎 Dự báo đơn lẻ", "📦 Dự báo hàng loạt"]
@@ -109,12 +202,12 @@ with tab1:
     for name, r in results.items():
         rep = r["report"]
         rows.append({
-            "Mô hình": name,
+            "Mô hình":           name,
             "Accuracy":          round(rep["accuracy"], 4),
             "Precision (fraud)": round(rep["1"]["precision"], 4),
             "Recall (fraud)":    round(rep["1"]["recall"], 4),
             "F1 (fraud)":        round(rep["1"]["f1-score"], 4),
-            "AUC-ROC":           round(r["auc"], 4) if r["auc"] else None,
+            "AUC-ROC":           round(r["auc"], 4) if r["auc"] else 0.0,
         })
     comp_df = pd.DataFrame(rows).set_index("Mô hình")
 
@@ -127,40 +220,40 @@ with tab1:
 
     st.dataframe(comp_df.style.apply(highlight_max).format("{:.4f}"), use_container_width=True)
 
-    # Bar chart – Plotly
-    metric_cols = ["Accuracy", "Precision (fraud)", "Recall (fraud)", "F1 (fraud)", "AUC-ROC"]
-    colors = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f"]
-    fig_bar = go.Figure()
-    for col, color in zip(metric_cols, colors):
-        fig_bar.add_trace(go.Bar(
-            name=col,
-            x=comp_df.index.tolist(),
-            y=comp_df[col].astype(float).tolist(),
-            marker_color=color,
-        ))
-    fig_bar.update_layout(
-        barmode="group", title="So sánh hiệu suất mô hình",
-        yaxis=dict(range=[0, 1.1]), height=380,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02),
-    )
-    st.plotly_chart(fig_bar, use_container_width=True)
+    # Bar chart bằng SVG cho từng metric
+    metric_colors = {
+        "Accuracy":          "#4e79a7",
+        "Precision (fraud)": "#f28e2b",
+        "Recall (fraud)":    "#e15759",
+        "F1 (fraud)":        "#76b7b2",
+        "AUC-ROC":           "#59a14f",
+    }
+    for metric, color in metric_colors.items():
+        render_bar_svg(
+            labels=comp_df.index.tolist(),
+            values=comp_df[metric].astype(float).tolist(),
+            colors_list=[color] * len(comp_df),
+            title=metric,
+            width=460,
+            height=110,
+        )
 
     # Phân bố nhãn
     st.markdown("---")
     st.subheader("📊 Phân bố dữ liệu")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Tổng giao dịch", len(df))
+    c1.metric("Tổng giao dịch",  len(df))
     c2.metric("Bình thường (0)", int((df["default"] == 0).sum()))
     c3.metric("Gian lận (1)",    int((df["default"] == 1).sum()))
 
     counts = df["default"].value_counts().sort_index()
-    fig_pie = px.pie(
-        values=counts.values,
-        names=["Bình thường (0)", "Gian lận (1)"],
-        color_discrete_sequence=["#4e79a7", "#e15759"],
-        title="Tỉ lệ nhãn",
+    render_bar_svg(
+        labels=["Bình thường (0)", "Gian lận (1)"],
+        values=counts.values.tolist(),
+        colors_list=["#4e79a7", "#e15759"],
+        title="Số lượng giao dịch theo nhãn",
+        width=400, height=120,
     )
-    st.plotly_chart(fig_pie, use_container_width=True)
 
 # ─── Tab 2: Chi tiết & ROC ────────────────────────────────────────────────────
 with tab2:
@@ -168,60 +261,28 @@ with tab2:
     r = results[selected]
 
     col_a, col_b = st.columns(2)
-
-    # Confusion matrix – Plotly heatmap
     with col_a:
-        st.markdown("**Ma trận nhầm lẫn**")
-        cm = r["cm"]
-        fig_cm = px.imshow(
-            cm,
-            text_auto=True,
-            color_continuous_scale="Blues",
-            x=["Dự báo 0", "Dự báo 1"],
-            y=["Thực tế 0", "Thực tế 1"],
-            title=selected,
-        )
-        fig_cm.update_layout(height=320)
-        st.plotly_chart(fig_cm, use_container_width=True)
-
-    # ROC – Plotly
+        render_confusion_matrix(r["cm"], title=f"Ma trận nhầm lẫn – {selected}")
     with col_b:
-        st.markdown("**Đường cong ROC**")
-        fig_roc = go.Figure()
-        for name, res in results.items():
-            if res["fpr"] is not None:
-                fig_roc.add_trace(go.Scatter(
-                    x=res["fpr"].tolist(), y=res["tpr"].tolist(),
-                    mode="lines",
-                    name=f"{name} (AUC={res['auc']:.3f})",
-                ))
-        fig_roc.add_trace(go.Scatter(
-            x=[0, 1], y=[0, 1], mode="lines",
-            line=dict(dash="dash", color="gray"), name="Random",
-        ))
-        fig_roc.update_layout(
-            title="ROC – tất cả mô hình",
-            xaxis_title="FPR", yaxis_title="TPR", height=320,
-        )
-        st.plotly_chart(fig_roc, use_container_width=True)
+        render_roc_svg(results)
 
-    # Classification report
+    st.markdown("---")
     st.markdown("**Báo cáo phân loại chi tiết**")
     rep_df = pd.DataFrame(r["report"]).T.drop(columns=["support"], errors="ignore")
     st.dataframe(rep_df.style.format("{:.4f}"), use_container_width=True)
 
-    # Feature importance
     model_obj = r["model"]
     if hasattr(model_obj, "feature_importances_"):
         st.markdown("**Mức độ quan trọng đặc trưng**")
         fi = pd.Series(model_obj.feature_importances_, index=feat_names).sort_values()
-        fig_fi = px.bar(
-            x=fi.values, y=fi.index, orientation="h",
+        render_bar_svg(
+            labels=fi.index.tolist(),
+            values=fi.values.tolist(),
+            colors_list=["#4e79a7"] * len(fi),
             title=f"Feature Importance – {selected}",
-            color_discrete_sequence=["#4e79a7"],
+            width=520,
+            height=60 + len(fi) * 26,
         )
-        fig_fi.update_layout(height=max(300, len(fi) * 28))
-        st.plotly_chart(fig_fi, use_container_width=True)
 
 # ─── Tab 3: Dự báo đơn lẻ ────────────────────────────────────────────────────
 with tab3:
@@ -234,8 +295,8 @@ with tab3:
     half = len(feat_names) // 2
     for i, feat in enumerate(feat_names):
         fmean = float(df[feat].mean())
-        target_col = col_l if i < half else col_r
-        input_vals[feat] = target_col.number_input(
+        target = col_l if i < half else col_r
+        input_vals[feat] = target.number_input(
             feat, value=round(fmean, 6), format="%.6f", key=f"inp_{feat}"
         )
 
@@ -251,16 +312,13 @@ with tab3:
             st.success(f"✅ **BÌNH THƯỜNG**{p_str}")
 
         if prob is not None:
-            fig_prob = go.Figure(go.Bar(
-                x=[prob[0], prob[1]],
-                y=["Bình thường", "Gian lận"],
-                orientation="h",
-                marker_color=["#4e79a7", "#e15759"],
-            ))
-            fig_prob.update_layout(
-                title="Xác suất dự báo", xaxis=dict(range=[0, 1]), height=200,
+            render_bar_svg(
+                labels=["Bình thường", "Gian lận"],
+                values=[round(prob[0], 4), round(prob[1], 4)],
+                colors_list=["#4e79a7", "#e15759"],
+                title="Xác suất dự báo",
+                width=420, height=110,
             )
-            st.plotly_chart(fig_prob, use_container_width=True)
 
 # ─── Tab 4: Dự báo hàng loạt ─────────────────────────────────────────────────
 with tab4:
@@ -277,8 +335,9 @@ with tab4:
             st.warning(f"Thiếu cột: {missing}")
         else:
             X_pred = X_batch[feat_names]
-            preds = batch_model.predict(X_pred)
-            probs = batch_model.predict_proba(X_pred)[:, 1] if hasattr(batch_model, "predict_proba") else None
+            preds  = batch_model.predict(X_pred)
+            probs  = (batch_model.predict_proba(X_pred)[:, 1]
+                      if hasattr(batch_model, "predict_proba") else None)
 
             result_df = X_batch.copy()
             result_df["Dự báo (default)"] = preds
@@ -288,9 +347,9 @@ with tab4:
             fraud_n  = int(preds.sum())
             normal_n = len(preds) - fraud_n
             c1, c2, c3 = st.columns(3)
-            c1.metric("Tổng giao dịch", len(preds))
-            c2.metric("Bình thường",    normal_n)
-            c3.metric("Gian lận phát hiện", fraud_n)
+            c1.metric("Tổng giao dịch",     len(preds))
+            c2.metric("Bình thường",         normal_n)
+            c3.metric("Gian lận phát hiện",  fraud_n)
 
             st.dataframe(
                 result_df.style.apply(
