@@ -26,8 +26,75 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("🔍 Phát hiện Giao dịch Gian lận")
-st.markdown("Huấn luyện & so sánh mô hình · Dự báo đơn lẻ · Dự báo hàng loạt")
+# ─── Logo Agribank + Tiêu đề ──────────────────────────────────────────────────
+st.markdown("""
+<div style="display:flex;align-items:center;gap:18px;margin-bottom:6px;">
+  <!-- Logo SVG phong cách Agribank -->
+  <svg xmlns="http://www.w3.org/2000/svg" width="200" height="64" viewBox="0 0 200 64">
+    <!-- Nền bo tròn -->
+    <rect width="200" height="64" rx="8" fill="#ffffff"/>
+    <!-- Khối đỏ bên trái (bông lúa cách điệu) -->
+    <rect x="6" y="8" width="10" height="48" rx="3" fill="#D0021B"/>
+    <ellipse cx="11" cy="14" rx="7" ry="5" fill="#D0021B"/>
+    <ellipse cx="6"  cy="24" rx="5" ry="4" fill="#D0021B" transform="rotate(-20,6,24)"/>
+    <ellipse cx="16" cy="24" rx="5" ry="4" fill="#D0021B" transform="rotate(20,16,24)"/>
+    <ellipse cx="6"  cy="34" rx="5" ry="4" fill="#D0021B" transform="rotate(-20,6,34)"/>
+    <ellipse cx="16" cy="34" rx="5" ry="4" fill="#D0021B" transform="rotate(20,16,34)"/>
+    <!-- Chữ AGRIBANK -->
+    <text x="30" y="28" font-family="Arial Black,Arial,sans-serif"
+          font-size="19" font-weight="900" fill="#D0021B" letter-spacing="1">AGRIBANK</text>
+    <!-- Dòng phụ -->
+    <text x="30" y="46" font-family="Arial,sans-serif"
+          font-size="8.5" fill="#1A6B3C" letter-spacing="0.4">Ngân hàng Nông nghiệp &amp; PTNT Việt Nam</text>
+    <!-- Đường kẻ xanh lá dưới chữ AGRIBANK -->
+    <rect x="30" y="33" width="158" height="2" rx="1" fill="#1A6B3C"/>
+  </svg>
+  <!-- Tiêu đề app -->
+  <div>
+    <div style="font-size:24px;font-weight:900;color:#0D47A1;line-height:1.2;">
+      🔍 Phát hiện Giao dịch Gian lận
+    </div>
+    <div style="font-size:13px;color:#1565C0;font-weight:700;margin-top:2px;">
+      Huấn luyện &amp; so sánh mô hình · Dự báo đơn lẻ · Dự báo hàng loạt
+    </div>
+  </div>
+</div>
+<hr style="border:2px solid #1565C0;margin-top:4px;margin-bottom:16px;">
+""", unsafe_allow_html=True)
+
+# ─── CSS toàn cục: in đậm + màu xanh dương ───────────────────────────────────
+st.markdown("""
+<style>
+html, body, [class*="css"], .stApp, .stMarkdown, p, span, div,
+label, .stTextInput, .stNumberInput, .stSelectbox,
+.stSlider, .stFileUploader, .stTabs,
+.stExpander, .stSidebar, [data-testid="stSidebar"] * {
+    color: #1565C0 !important;
+    font-weight: 700 !important;
+}
+h1, h2, h3, h4, h5, h6 {
+    color: #0D47A1 !important;
+    font-weight: 900 !important;
+}
+button[data-baseweb="tab"] > div {
+    color: #1565C0 !important;
+    font-weight: 700 !important;
+}
+[data-testid="stMetricLabel"] > div,
+[data-testid="stMetricValue"] > div {
+    color: #1565C0 !important;
+    font-weight: 700 !important;
+}
+.stButton > button {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+input, textarea, select {
+    color: #1565C0 !important;
+    font-weight: 700 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
