@@ -1,3 +1,11 @@
+import subprocess, sys
+
+# Tự động cài scikit-learn nếu chưa có (fix Streamlit Cloud)
+try:
+    import sklearn
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn", "--quiet"])
+
 import streamlit as st
 import pandas as pd
 import numpy as np
